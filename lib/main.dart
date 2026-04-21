@@ -13,67 +13,103 @@ class HushHushApp extends StatelessWidget {
   }
 }
 
-// Global Colors
 const Color skyBlue = Color(0xFF87CEEB);
 const Color hotPink = Color(0xFFFF69B4);
 const Color softPink = Color(0xFFFFF0F5);
 
-class MainSharingSpace extends StatelessWidget {
-  final List<Map<String, String>> posts = [
-    {"user": "Hidden Pearl", "tag": "#LostLove", "content": "It's been a year, and I still find myself checking his profile. Does the stinging ever stop?", "type": "text"},
-    {"user": "Warrior Spirit", "tag": "#Success", "content": "Voice Diary: Finally moved into my own place. It's quiet, but it's mine.", "type": "audio"},
-    {"user": "Sister #902", "tag": "#Cheating", "content": "I found the messages. I feel like the floor just disappeared from under me.", "type": "text"},
+class MainSharingSpace extends StatefulWidget {
+  @override
+  _MainSharingSpaceState createState() => _MainSharingSpaceState();
+}
+
+class _MainSharingSpaceState extends State<MainSharingSpace> {
+  final TextEditingController _mainController = TextEditingController();
+  
+  List<Map<String, dynamic>> posts = [
+    {"user": "Hidden Pearl", "tag": "#LostLove", "title": "Checking In", "content": "It's been a year... 💔", "type": "text", "isLiked": false},
+    {"user": "Warrior Spirit", "tag": "#Success", "title": "New Beginnings", "content": "Voice Diary Shared 🎙️", "type": "audio", "isLiked": false},
   ];
+
+  void _showPublishDialog({String? content, bool isAudio = false}) {
+    String selectedTag = "#General"; // Initialize with a default valid value
+    TextEditingController titleController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Finalize Post", style: TextStyle(color: hotPink, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: titleController, decoration: const InputDecoration(labelText: "Entry Title")),
+            const SizedBox(height: 15),
+            DropdownButtonFormField<String>(
+              value: selectedTag,
+              items: ["#General", "#LostLove", "#Success", "#Cheating", "#Parenting"]
+                  .map<DropdownMenuItem<String>>((tag) => DropdownMenuItem<String>(value: tag, child: Text(tag)))
+                  .toList(),
+              onChanged: (String? val) {
+                if (val != null) {
+                  setState(() => selectedTag = val);
+                }
+              },
+              decoration: const InputDecoration(labelText: "Hashtag"),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: hotPink),
+            onPressed: () {
+              setState(() {
+                posts.insert(0, {
+                  "user": "You (Alias)",
+                  "tag": selectedTag,
+                  "title": titleController.text.isEmpty ? "My Secret" : titleController.text,
+                  "content": isAudio ? "Voice Diary Shared 🎙️" : content,
+                  "type": isAudio ? "audio" : "text",
+                  "isLiked": false
+                });
+                _mainController.clear();
+              });
+              Navigator.pop(context);
+            },
+            child: const Text("PUBLISH"),
+          )
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("SISTERHOOD FEED", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        actions: [
-          IconButton(icon: Icon(Icons.inbox_outlined, color: skyBlue), onPressed: () {}), // Link to the Inbox we made
-        ],
+        title: const Text("HUSH-HUSH", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white, elevation: 0, centerTitle: true,
       ),
       body: Column(
         children: [
-          // 1. TOPIC SELECTOR
-          Container(
-            height: 50,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(horizontal: 10),
-              children: ["All", "Divorce", "Cheating", "Parenting", "Success"].map((tag) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Chip(backgroundColor: tag == "All" ? hotPink : softPink, label: Text("#$tag", style: TextStyle(color: tag == "All" ? Colors.white : Colors.black87))),
-              )).toList(),
-            ),
-          ),
-
-          // 2. THE MAIN FEED
           Expanded(
             child: ListView.builder(
-              padding: EdgeInsets.all(15),
+              padding: const EdgeInsets.all(15),
               itemCount: posts.length,
-              itemBuilder: (context, index) => _buildPostCard(posts[index]),
+              itemBuilder: (context, index) => _buildPostCard(index),
             ),
           ),
-
-          // 3. THE "CREATE" BAR (TEXT + AUDIO)
-          _buildCreateBar(),
+          _buildCustomSharingBar(),
         ],
       ),
     );
   }
 
-  Widget _buildPostCard(Map<String, String> post) {
-    bool isAudio = post['type'] == 'audio';
+  Widget _buildPostCard(int index) {
+    var post = posts[index];
     return Container(
-      margin: EdgeInsets.only(bottom: 15),
-      padding: EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: softPink, borderRadius: BorderRadius.circular(25)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,32 +117,45 @@ class MainSharingSpace extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(post['tag']!, style: TextStyle(color: hotPink, fontWeight: FontWeight.bold, fontSize: 12)),
-              Text(post['user']!, style: TextStyle(color: Colors.grey, fontSize: 11, fontStyle: FontStyle.italic)),
+              Text(post['tag'] as String, style: const TextStyle(color: hotPink, fontWeight: FontWeight.bold)),
+              Text(post['user'] as String, style: const TextStyle(color: Colors.grey, fontSize: 11, fontStyle: FontStyle.italic)),
             ],
           ),
-          SizedBox(height: 10),
-          Text(post['content']!, style: TextStyle(fontSize: 16, height: 1.4, color: Colors.black87)),
-          if (isAudio) ...[
-            SizedBox(height: 15),
-            Container(
-              height: 40,
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(15)),
-              child: Row(
-                children: [
-                  IconButton(icon: Icon(Icons.play_arrow, color: hotPink), onPressed: () {}),
-                  Expanded(child: Text("|||II||I|I||II||I||I|", style: TextStyle(color: hotPink, letterSpacing: 2))),
-                  Padding(padding: const EdgeInsets.only(right: 15), child: Text("0:42", style: TextStyle(fontSize: 12))),
-                ],
-              ),
-            ),
-          ],
-          SizedBox(height: 15),
+          const SizedBox(height: 10),
+          Text(post['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const SizedBox(height: 5),
+          Text(post['content'] as String),
+          if (post['type'] == 'audio') _buildAudioWaveform(),
+          const SizedBox(height: 15),
           Row(
             children: [
-              _postAction(Icons.favorite_border, "Support"),
-              SizedBox(width: 20),
-              _postAction(Icons.chat_bubble_outline, "Connect"),
+              _actionBtn(
+                icon: (post['isLiked'] as bool) ? Icons.favorite : Icons.favorite_border,
+                label: "Support",
+                color: hotPink,
+                onTap: () => setState(() => post['isLiked'] = !(post['isLiked'] as bool)),
+              ),
+              const SizedBox(width: 20),
+              _actionBtn(
+                icon: Icons.chat_bubble_outline,
+                label: "Connect",
+                color: skyBlue,
+                onTap: () {}, 
+              ),
+              const SizedBox(width: 20),
+              _actionBtn(
+                icon: Icons.gif_box_outlined,
+                label: "GIF",
+                color: skyBlue,
+                onTap: () {},
+              ),
+              const SizedBox(width: 20),
+              _actionBtn(
+                icon: Icons.image_outlined,
+                label: "Pic",
+                color: skyBlue,
+                onTap: () {},
+              ),
             ],
           )
         ],
@@ -114,38 +163,63 @@ class MainSharingSpace extends StatelessWidget {
     );
   }
 
-  Widget _postAction(IconData icon, String label) => Row(
-    children: [
-      Icon(icon, size: 18, color: skyBlue),
-      SizedBox(width: 5),
-      Text(label, style: TextStyle(color: skyBlue, fontSize: 13, fontWeight: FontWeight.w600)),
-    ],
-  );
-
-  Widget _buildCreateBar() {
-    return Container(
-      padding: EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]),
+  Widget _actionBtn({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
       child: Row(
         children: [
-          // USER CIRCLE AVATAR
-          CircleAvatar(backgroundColor: softPink, child: Icon(Icons.person, color: hotPink, size: 20)),
-          SizedBox(width: 10),
-          // TEXT INPUT
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAudioWaveform() {
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: 40,
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
+      child: const Row(children: [Icon(Icons.play_arrow, color: hotPink), Expanded(child: Text(" |||II||I|I||II||I||I|", style: TextStyle(color: hotPink)))]),
+    );
+  }
+
+  Widget _buildCustomSharingBar() {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.black12))),
+      child: Row(
+        children: [
+          // PROFILE PIC
+          const CircleAvatar(backgroundColor: softPink, radius: 18, child: Text("P", style: TextStyle(color: hotPink, fontWeight: FontWeight.bold))),
+          const SizedBox(width: 8),
+          // TEXT BOX WITH EMOJI AND GIF
           Expanded(
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 15),
               decoration: BoxDecoration(color: softPink, borderRadius: BorderRadius.circular(25)),
-              child: TextField(
-                decoration: InputDecoration(hintText: "Share your secret...", border: InputBorder.none),
+              child: Row(
+                children: [
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _mainController,
+                      onSubmitted: (String val) => _showPublishDialog(content: val),
+                      decoration: const InputDecoration(hintText: "Share a secret...", border: InputBorder.none),
+                    ),
+                  ),
+                  IconButton(icon: const Icon(Icons.emoji_emotions_outlined, color: skyBlue, size: 20), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.gif_box_outlined, color: skyBlue, size: 20), onPressed: () {}),
+                ],
               ),
             ),
           ),
-          SizedBox(width: 10),
-          // RECORDING MIC
-          CircleAvatar(
-            backgroundColor: hotPink,
-            child: IconButton(icon: Icon(Icons.mic, color: Colors.white), onPressed: () {}),
+          const SizedBox(width: 10), // Spacing before the microphone icon
+          // RECORD BUTTON ON THE FAR RIGHT
+          GestureDetector(
+            onTap: () => _showPublishDialog(isAudio: true),
+            child: const CircleAvatar(backgroundColor: hotPink, radius: 22, child: Icon(Icons.mic, color: Colors.white)),
           ),
         ],
       ),
